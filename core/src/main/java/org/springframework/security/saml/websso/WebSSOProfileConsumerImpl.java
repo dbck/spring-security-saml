@@ -92,6 +92,11 @@ public class WebSSOProfileConsumerImpl extends AbstractProfileBase implements We
     }
 
     /**
+     * TODO: Description
+     */
+    private boolean disableMaxAuthenticationAge = false;
+
+    /**
      * Maximum time between users authentication and processing of the AuthNResponse message. (in seconds)
      */
     private long maxAuthenticationAge = 7200;
@@ -569,8 +574,8 @@ public class WebSSOProfileConsumerImpl extends AbstractProfileBase implements We
      */
     protected void verifyAuthenticationStatement(AuthnStatement auth, RequestedAuthnContext requestedAuthnContext, SAMLMessageContext context) throws AuthenticationException {
 
-        // Validate that user wasn't authenticated too long time ago
-        if (!isDateTimeSkewValid(getResponseSkew(), getMaxAuthenticationAge(), auth.getAuthnInstant())) {
+    	// Validate that user wasn't authenticated too long time ago
+        if (!disableMaxAuthenticationAge && !isDateTimeSkewValid(getResponseSkew(), getMaxAuthenticationAge(), auth.getAuthnInstant())) {
             throw new CredentialsExpiredException("Authentication statement is too old to be used with value " + auth.getAuthnInstant());
         }
 
@@ -693,5 +698,20 @@ public class WebSSOProfileConsumerImpl extends AbstractProfileBase implements We
         this.releaseDOM = releaseDOM;
     }
 
+    /**
+     * TODO: Description
+     * @return
+     */
+    public boolean isDisableMaxAuthenticationAge() {
+		return disableMaxAuthenticationAge;
+	}
+
+    /**
+     * TODO: Description
+     * @param disableMaxAuthenticationAge
+     */
+	public void setDisableMaxAuthenticationAge(boolean disableMaxAuthenticationAge) {
+		this.disableMaxAuthenticationAge = disableMaxAuthenticationAge;
+	}
 }
 
