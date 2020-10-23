@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.saml.context.SAMLContextProvider;
@@ -36,6 +37,7 @@ import org.springframework.util.Assert;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -91,6 +93,21 @@ public class SAMLProcessingFilter extends AbstractAuthenticationProcessingFilter
             SAMLAuthenticationToken token = new SAMLAuthenticationToken(context);
             return getAuthenticationManager().authenticate(token);
 
+        } catch(AuthenticationServiceException e) {
+        	Throwable samlException = e.getCause();
+        	if (samlException instanceof SAMLException) {
+        		Throwable credentialException = samlException.getCause();
+        		if (credentialException instanceof CredentialsExpiredException) {
+        			log.debug("Credentials expired. Trying to force authn request. Redirecting to saml entry point with force authn parameter.");
+        			try {
+						response.sendRedirect(SAMLEntryPoint.FILTER_URL + "?" + SAMLEntryPoint.FORCE_AUTH_N_PARAMETER + "=true");
+					} catch (IOException ioException) {
+						throw new AuthenticationServiceException("Forcing authn request failed.", ioException);
+					}
+        			return null;
+        		}
+        	}
+        	throw e;
         } catch (SAMLException e) {
             log.debug("Incoming SAML message is invalid", e);
             throw new AuthenticationServiceException("Incoming SAML message is invalid", e);
