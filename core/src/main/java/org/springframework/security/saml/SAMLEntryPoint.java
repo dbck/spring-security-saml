@@ -94,6 +94,8 @@ public class SAMLEntryPoint extends GenericFilterBean implements AuthenticationE
      */
     public static final String DISCOVERY_RESPONSE_PARAMETER = "disco";
 
+	public static final String FORCE_AUTH_N_PARAMETER = "forceAuthN";
+
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
 
         FilterInvocation fi = new FilterInvocation(request, response, chain);
@@ -143,13 +145,18 @@ public class SAMLEntryPoint extends GenericFilterBean implements AuthenticationE
         try {
 
             SAMLMessageContext context = contextProvider.getLocalAndPeerEntity(request, response);
+            
+            boolean forceAuthN = false;
+            if(request.getParameter(FORCE_AUTH_N_PARAMETER) != null) {
+            	forceAuthN = Boolean.parseBoolean(request.getParameter(FORCE_AUTH_N_PARAMETER));
+            }
 
             if (isECP(context)) {
-                initializeECP(context, e);
+                initializeECP(context, forceAuthN, e);
             } else if (isDiscovery(context)) {
                 initializeDiscovery(context);
             } else {
-                initializeSSO(context, e);
+                initializeSSO(context, forceAuthN, e);
             }
 
         } catch (SAMLException e1) {
@@ -171,14 +178,15 @@ public class SAMLEntryPoint extends GenericFilterBean implements AuthenticationE
      * Subclasses can alter the initialization behaviour.
      *
      * @param context saml context, also containing wrapped request and response objects
+     * @param forceAuthN 
      * @param e       exception causing the entry point to be invoked (if any)
      * @throws MetadataProviderException in case metadata can't be queried
      * @throws SAMLException             in case message sending fails
      * @throws MessageEncodingException  in case SAML message encoding fails
      */
-    protected void initializeECP(SAMLMessageContext context, AuthenticationException e) throws MetadataProviderException, SAMLException, MessageEncodingException {
+    protected void initializeECP(SAMLMessageContext context, Boolean forceAuthN, AuthenticationException e) throws MetadataProviderException, SAMLException, MessageEncodingException {
 
-        WebSSOProfileOptions options = getProfileOptions(context, e);
+        WebSSOProfileOptions options = getProfileOptions(context,forceAuthN, e);
 
         log.debug("Processing SSO using ECP profile");
         webSSOprofileECP.sendAuthenticationRequest(context, options);
@@ -195,15 +203,16 @@ public class SAMLEntryPoint extends GenericFilterBean implements AuthenticationE
      * Subclasses can alter the initialization behaviour.
      *
      * @param context saml context, also containing wrapped request and response objects
+     * @param forceAuthN 
      * @param e       exception causing the entry point to be invoked (if any)
      * @throws MetadataProviderException in case metadata can't be queried
      * @throws SAMLException             in case message sending fails
      * @throws MessageEncodingException  in case SAML message encoding fails
      */
-    protected void initializeSSO(SAMLMessageContext context, AuthenticationException e) throws MetadataProviderException, SAMLException, MessageEncodingException {
+    protected void initializeSSO(SAMLMessageContext context, boolean forceAuthN, AuthenticationException e) throws MetadataProviderException, SAMLException, MessageEncodingException {
 
         // Generate options for the current SSO request
-        WebSSOProfileOptions options = getProfileOptions(context, e);
+        WebSSOProfileOptions options = getProfileOptions(context, forceAuthN, e);
 
         // Determine the assertionConsumerService to be used
         AssertionConsumerService consumerService = SAMLUtil.getConsumerService((SPSSODescriptor) context.getLocalEntityRoleMetadata(), options.getAssertionConsumerIndex());
@@ -276,17 +285,22 @@ public class SAMLEntryPoint extends GenericFilterBean implements AuthenticationE
      * and request specific values will be update (idp field).
      *
      * @param context   containing local entity
+     * @param forceAuthN 
      * @param exception exception causing invocation of this entry point (can be null)
      * @return populated webSSOprofile
      * @throws MetadataProviderException in case metadata loading fails
      */
-    protected WebSSOProfileOptions getProfileOptions(SAMLMessageContext context, AuthenticationException exception) throws MetadataProviderException {
+    protected WebSSOProfileOptions getProfileOptions(SAMLMessageContext context, boolean forceAuthN, AuthenticationException exception) throws MetadataProviderException {
 
         WebSSOProfileOptions ssoProfileOptions;
         if (defaultOptions != null) {
             ssoProfileOptions = defaultOptions.clone();
         } else {
             ssoProfileOptions = new WebSSOProfileOptions();
+        }
+        
+        if (forceAuthN) {
+            ssoProfileOptions.setForceAuthN(true);
         }
 
         return ssoProfileOptions;

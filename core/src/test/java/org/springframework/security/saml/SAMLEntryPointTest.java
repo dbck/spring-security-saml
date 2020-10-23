@@ -132,6 +132,7 @@ public class SAMLEntryPointTest {
         expect(request.getHeader("Accept")).andReturn("text/html");
         expect(request.getHeader(org.springframework.security.saml.SAMLConstants.PAOS_HTTP_HEADER)).andReturn(null);
         expect(request.getParameter(SAMLEntryPoint.DISCOVERY_RESPONSE_PARAMETER)).andReturn("false");
+        expect(request.getParameter(SAMLEntryPoint.FORCE_AUTH_N_PARAMETER)).andReturn(null);
         SAMLTestHelper.setLocalContextParameters(request, "/samlApp", null);
         SAMLTestHelper.setPeerContextParameters(request, null, null);
         expect(request.getAttribute(org.springframework.security.saml.SAMLConstants.LOCAL_CONTEXT_PATH)).andReturn("/samlApp");
@@ -203,7 +204,7 @@ public class SAMLEntryPointTest {
     @Test
     public void testInitialProfileOptions() throws Exception {
 
-        WebSSOProfileOptions ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(), null);
+        WebSSOProfileOptions ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(), false, null);
         assertEquals(new Integer(2), ssoProfileOptions.getProxyCount());
         assertTrue(ssoProfileOptions.isIncludeScoping());
         assertFalse(ssoProfileOptions.getForceAuthN());
@@ -232,7 +233,7 @@ public class SAMLEntryPointTest {
         entryPoint.setDefaultProfileOptions(defaultOptions);
 
         // Check that default values are used
-        WebSSOProfileOptions ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(), null);
+        WebSSOProfileOptions ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(), false, null);
         assertEquals(new Integer(0), ssoProfileOptions.getProxyCount());
         assertFalse(ssoProfileOptions.isIncludeScoping());
         assertFalse(ssoProfileOptions.getForceAuthN());
@@ -241,12 +242,12 @@ public class SAMLEntryPointTest {
 
         // Check that value can't be altered after being set
         defaultOptions.setIncludeScoping(true);
-        ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(), null);
+        ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(), false, null);
         assertFalse(ssoProfileOptions.isIncludeScoping());
 
         // Check that default values can be cleared
         entryPoint.setDefaultProfileOptions(null);
-        ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(), null);
+        ssoProfileOptions = entryPoint.getProfileOptions(new SAMLMessageContext(),false, null);
         assertTrue(ssoProfileOptions.isIncludeScoping());        
 
         verifyMock();
@@ -285,6 +286,7 @@ public class SAMLEntryPointTest {
     public void testCorrectIDP() throws Exception {
 
         expect(request.getSession(true)).andReturn(session);
+        expect(request.getParameter(SAMLEntryPoint.FORCE_AUTH_N_PARAMETER)).andReturn(null);
 
         SAMLTestHelper.setLocalContextParameters(request, "/samlApp", null);
         SAMLTestHelper.setPeerContextParameters(request, "http://localhost:8080/opensso", null);
